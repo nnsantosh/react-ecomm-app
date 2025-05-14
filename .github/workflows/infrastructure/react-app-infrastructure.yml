@@ -1,0 +1,165 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template for React app hosting infrastructure: S3, CloudFront, and IAM user for deployments"
+
+Parameters:
+  ApplicationName:
+    Type: String
+    Description: Name of your application (used for resource naming)
+    Default: react-ecomm-app
+    AllowedPattern: "[a-zA-Z0-9-]*"
+    ConstraintDescription: "Only alphanumeric characters and hyphens allowed"
+
+  Environment:
+    Type: String
+    Default: "prod"
+    AllowedValues: ["dev", "staging", "prod"]
+    Description: Deployment environment
+
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket (must be globally unique)
+    AllowedPattern: "^[a-z0-9][a-z0-9.-]*[a-z0-9]$"
+    ConstraintDescription: "Bucket name can include numbers, lowercase letters, periods, and hyphens"
+
+  CreateNewBucket:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+    Description: Whether to create a new S3 bucket (set to false if bucket already exists)
+
+Conditions:
+  ShouldCreateBucket: !Equals [!Ref CreateNewBucket, "true"]
+  IsProduction: !Equals [!Ref Environment, "prod"]
+
+Resources:
+  ReactAppBucket:
+    Type: AWS::S3::Bucket
+    Condition: ShouldCreateBucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Ref S3BucketName
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Sub "OAI for ${ApplicationName}"
+
+  ReactAppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    DependsOn: [CloudFrontDistribution, CloudFrontOriginAccessIdentity]
+    Properties:
+      Bucket: !Ref S3BucketName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::cloudfront:user/CloudFront Origin Access Identity ${CloudFrontOriginAccessIdentity}"
+            Action: "s3:GetObject"
+            Resource: !Sub "arn:aws:s3:::${S3BucketName}/*"
+
+  CloudFrontDistribution:
+    Type: AWS::CloudFront::Distribution
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      DistributionConfig:
+        Origins:
+          - Id: S3Origin
+            DomainName: !Sub "${S3BucketName}.s3.${AWS::Region}.amazonaws.com"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachedMethods: [GET, HEAD, OPTIONS]
+          Compress: true
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          OriginRequestPolicyId: 88a5eaf4-2fd4-4709-b370-b4c650ea3fcf
+        CustomErrorResponses:
+          - ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+            ErrorCachingMinTTL: 0
+        HttpVersion: http2
+        IPV6Enabled: true
+        PriceClass: !If [IsProduction, "PriceClass_All", "PriceClass_100"]
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+  DeploymentUser:
+    Type: AWS::IAM::User
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserName: !Sub "${ApplicationName}-deployer-${Environment}"
+      Policies:
+        - PolicyName: DeploymentPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  [
+                    "s3:PutObject",
+                    "s3:GetObject",
+                    "s3:DeleteObject",
+                    "s3:ListBucket",
+                  ]
+                Resource:
+                  [
+                    !Sub "arn:aws:s3:::${S3BucketName}",
+                    !Sub "arn:aws:s3:::${S3BucketName}/*",
+                  ]
+              - Effect: Allow
+                Action: ["cloudfront:CreateInvalidation"]
+                Resource: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${CloudFrontDistribution}"
+
+  DeploymentUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref DeploymentUser
+
+Outputs:
+  S3BucketName:
+    Description: S3 bucket name for React app
+    Value: !Ref S3BucketName
+
+  CloudFrontDistributionId:
+    Description: CloudFront distribution ID
+    Value: !Ref CloudFrontDistribution
+
+  CloudFrontDomainName:
+    Description: CloudFront domain name
+    Value: !GetAtt CloudFrontDistribution.DomainName
+
+  DeploymentUserAccessKey:
+    Description: Access key ID for deployment user
+    Value: !Ref DeploymentUserAccessKey
+
+  DeploymentUserSecretKey:
+    Description: Secret access key for deployment user
+    Value: !GetAtt DeploymentUserAccessKey.SecretAccessKey

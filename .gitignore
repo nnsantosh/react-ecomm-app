@@ -1,0 +1,8 @@
+# Node.js dependencies
+/node_modules/
+
+# IntelliJ IDEA project files
+/.idea/
+.DS_Store
+node_modules/
+

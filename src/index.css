@@ -1,0 +1,58 @@
+
+       body {
+           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+           background: linear-gradient(to right, #ece9e6, #ffffff);
+           margin: 0;
+           padding: 0;
+           color: #333;
+       }
+
+h1, h2 {
+    color: #2c3e50;
+}
+
+.button {
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    opacity: 0.9;
+}
+
+input:focus {
+    border-color: #007BFF;
+    outline: none;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.grid {
+    display: grid;
+    gap: 20px;
+}
+
+.product-card:hover {
+    box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.cart {
+    border-top: 1px solid #ccc;
+    margin-top: 20px;
+    padding-top: 20px;
+}
+
+button, input, .product-card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+button:hover {
+    transform: scale(1.05);
+    background-color: #0056b3;
+}
