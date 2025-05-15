@@ -7,6 +7,7 @@ function HomePage() {
     const navigate = useNavigate();
     const { cartItems, setCartItems } = useContext(CartContext);
     const [quantities, setQuantities] = useState({});
+    const [searchQuery, setSearchQuery] = useState('');
 
     const addToCart = (product) => {
         const existingItem = cartItems.find((item) => item.id === product.id);
@@ -67,13 +68,54 @@ function HomePage() {
         navigate('/cart');
     };
 
+    // Simple semantic-like search (name + description)
+    const filteredProducts = products.filter((product) => {
+        const query = searchQuery.toLowerCase();
+        return (
+            product.name.toLowerCase().includes(query) ||
+            (product.description && product.description.toLowerCase().includes(query))
+        );
+    });
+
     return (
         <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
             <h1 style={{ textAlign: 'center', fontSize: '2.5rem', color: '#333' }}>
                 Trendy & Stylish Products for You!
             </h1>
+
+            {/* Search Input */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                        padding: '10px',
+                        width: '250px',
+                        border: '1px solid #ccc',
+                        borderRadius: '5px',
+                        fontSize: '16px',
+                        marginRight: '10px',
+                    }}
+                />
+                <button
+                    onClick={() => {}} // Optional: trigger search manually
+                    style={{
+                        padding: '10px 15px',
+                        backgroundColor: '#007BFF',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                    }}
+                >
+                    Search
+                </button>
+            </div>
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', justifyContent: 'center' }}>
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                     <div
                         key={product.id}
                         style={{
@@ -140,6 +182,7 @@ function HomePage() {
                     </div>
                 ))}
             </div>
+
             <button
                 onClick={goToCart}
                 style={{
