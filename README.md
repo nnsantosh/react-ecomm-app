@@ -33,6 +33,7 @@ CloudFront domain name
 IAM user access key and secret key
 
 Take these values and add them to your GitHub repository secrets under environment prod:
+https://github.com/nnsantosh/react-ecomm-app/settings/secrets/actions
 
 AWS_ACCESS_KEY_ID: The DeploymentUserAccessKey output value
 AWS_SECRET_ACCESS_KEY: The DeploymentUserSecretKey output value
@@ -40,3 +41,5 @@ AWS_S3_BUCKET: The S3BucketName output value
 AWS_CLOUDFRONT_DISTRIBUTION_ID: The CloudFrontDistributionId output value
 
 After this any change in source code will trigger the github actions which will deploy your code to AWS and the application can be accessed by using cloudfront domain name
+
+Check the app
